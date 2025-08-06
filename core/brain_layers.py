@@ -80,11 +80,19 @@ class BabyBrain(nn.Module):
             nn.Linear(HIDDEN_DIM, MODEL_DIM)
         )
 
-    def forward(self, input_text: str) -> dict:
+    def forward(self, input_text: str, use_groq: bool = False) -> dict:
         """
         Forward pass for the AI baby brain.
-        Returns a dict with thoughts, emotions, and decisions tensors.
+        If use_groq=True, offload computation to GroqAccelerator for speed.
+        Returns a dict with thoughts, emotions, and decisions tensors or accelerated results.
         """
+        if use_groq:
+            try:
+                from .groq_accelerator import GROQ_ACCELERATOR
+                return GROQ_ACCELERATOR.infer_brain({"input_text": input_text})
+            except Exception as e:
+                logging.warning(f"Groq acceleration failed, falling back: {e}")
+        # Обычный путь (CPU/GPU)
         tokens = self.perception.encode(input_text)
         perception_output = self.perception(tokens)
         language_features = self.language_layer(perception_output.mean(dim=1))

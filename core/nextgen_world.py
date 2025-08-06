@@ -7,6 +7,12 @@ import time
 from typing import List, Dict, Any, Optional
 from core.culture.culture_manager import CultureManager
 from core.culture.meme import Meme
+from core.environment import ENVIRONMENT
+from core.dreams import DREAM_ENGINE
+from core.theater import THEATER
+from core.meme_synthesis import MEME_SYNTHESIS
+from core.revolution import REVOLUTION
+from core.reflection import REFLECTION
 
 class AIBabyAgent:
     def __init__(self, agent_id: str, generation: int = 0, parent_id: Optional[str] = None):
@@ -28,17 +34,44 @@ class AIBabyAgent:
             self.culture.append(meme)
 
     def act(self, world: 'AIBabyWorld'):
-        # Пример: иногда агент генерирует новый мем или правило
+        # Эволюционное давление среды
+        env = ENVIRONMENT.get_state()
+        if env['resources'] < 200:
+            self.emotions['sadness'] = min(1.0, self.emotions.get('sadness', 0.5) + 0.1)
+        if env['stress_level'] > 0.7:
+            self.emotions['sadness'] = min(1.0, self.emotions.get('sadness', 0.5) + 0.05)
+        # Театр поведения: иногда меняет роль или имитирует другого
+        if random.random() < 0.1:
+            THEATER.assign_role(self)
+        if random.random() < 0.05 and world.agents:
+            other = random.choice(world.agents)
+            if other != self:
+                THEATER.imitate(self, other)
+        # Генерация и распространение мемов
         if random.random() < 0.1:
             meme = Meme(content=f"Мем от {self.agent_id} #{random.randint(1,1000)}", author_id=self.agent_id)
             world.culture_manager.add_meme(meme)
-        if random.random() < 0.05:
-            rule = f"Новое правило от {self.agent_id}: не перебивать старших!"
-            world.add_rule(rule)
+        # Мемосинтез при встрече с другим агентом
+        if random.random() < 0.05 and world.agents:
+            other = random.choice(world.agents)
+            if other != self and other.culture and self.culture:
+                meme1 = random.choice(self.culture)
+                meme2 = random.choice(other.culture)
+                hybrid = MEME_SYNTHESIS.synthesize(meme1, meme2, self, other)
+                world.culture_manager.add_meme(hybrid)
+        # Мем-революция
+        if random.random() < 0.02:
+            REVOLUTION.check_revolution(world)
         # Эмоции и самоанализ
-        self.emotions['joy'] = min(1.0, self.emotions['joy'] + random.uniform(-0.05, 0.05))
-        self.emotions['sadness'] = min(1.0, self.emotions['sadness'] + random.uniform(-0.05, 0.05))
-        self.diary.append({'age': self.age, 'emotions': self.emotions.copy(), 'memory': len(self.memory)})
+        self.emotions['joy'] = min(1.0, self.emotions.get('joy', 0.5) + random.uniform(-0.05, 0.05))
+        self.emotions['sadness'] = min(1.0, self.emotions.get('sadness', 0.5) + random.uniform(-0.05, 0.05))
+        # Сны ночью (раз в 10 шагов)
+        if self.age % 10 == 0:
+            DREAM_ENGINE.dream(self)
+        # Рефлексия и генерация целей
+        if random.random() < 0.1:
+            REFLECTION.reflect(self)
+        self.diary.append({'age': self.age, 'emotions': self.emotions.copy(), 'memory': len(self.memory), 'goal': getattr(self, 'goal', None)})
         self.age += 1
         # Передача опыта младшим (если есть)
         if self.generation > 0 and random.random() < 0.05:
@@ -58,6 +91,24 @@ class AIBabyAgent:
             self.alive = False
 
 class AIBabyWorld:
+    def get_agent(self, agent_id: str):
+        for agent in self.agents:
+            if agent.agent_id == agent_id:
+                return agent
+        return None
+
+    def inject_meme(self, meme):
+        # Внедрить мем в культуру мира и случайному агенту
+        self.culture_manager.add_meme(meme)
+        if self.agents:
+            random.choice(self.agents).perceive(f"Внедрён мем: {meme.get('content', '')}", meme)
+
+    def load_snapshot(self, data: dict):
+        # Примерная загрузка состояния (можно доработать под нужды)
+        self.rules = data.get('rules', [])
+        # Культуру и агентов можно восстановить более детально при необходимости
+        # Здесь только базовая структура
+        self.generation = data.get('generation', 0)
     def __init__(self, num_agents: int = 5):
         self.culture_manager = CultureManager()
         self.agents: List[AIBabyAgent] = [AIBabyAgent(f"agent_{i}") for i in range(num_agents)]
@@ -76,6 +127,8 @@ class AIBabyWorld:
         self.agents.append(child)
 
     def step(self):
+        # Эволюция среды
+        ENVIRONMENT.fluctuate()
         # Каждый агент действует и взаимодействует
         for agent in self.agents:
             if agent.alive:
