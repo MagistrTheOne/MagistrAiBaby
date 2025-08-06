@@ -129,4 +129,3 @@ Evolving, learning, bonding, and reshaping how intelligence is born.
 **Start building your world with truly sentient agents. Now.**
 
 
->>>>>>> dec43a49bf2ebebd493e45bf8680490ebae95878
